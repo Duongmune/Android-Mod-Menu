@@ -1,0 +1,33 @@
+name: ChanelTeam LGL Build
+
+# Cho phép pháp sư bấm nút "Run workflow" bằng tay
+on:
+  workflow_dispatch: 
+
+jobs:
+  build:
+    name: Build LGL Mod Menu
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lấy mã nguồn về máy chủ
+        uses: actions/checkout@v3
+
+      - name: Cài đặt môi trường Java JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Cấp quyền thực thi cho Gradle
+        run: chmod +x ./gradlew
+
+      - name: Nổi Lửa Lò Bát Quái (Đang Build...)
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Đóng gói Đan Dược (Tạo file tải về)
+        uses: actions/upload-artifact@v3
+        with:
+          name: ChanelTeam_Mod_APK
+          # Quét tìm file APK sau khi nấu xong
+          path: app/build/outputs/apk/release/*.apk
