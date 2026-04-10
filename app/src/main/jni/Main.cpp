@@ -111,8 +111,8 @@ void hack_thread() {
     // 2. NGỦ ĐÔNG 15 GIÂY: Qua mặt hoàn toàn Tencent MTP lúc Load Tài Nguyên
     sleep(15);
 
-    // 3. TÌM LÕI VÀ MÓC OFFSET
-    uintptr_t il2cppBase = getAbsoluteAddress(OBFUSCATE("libil2cpp.so"), 0);
+    // 3. TÌM LÕI VÀ MÓC OFFSET (ĐÃ FIX LỖI ÉP KIỂU UINTPTR_T)
+    uintptr_t il2cppBase = (uintptr_t)getAbsoluteAddress(OBFUSCATE("libil2cpp.so"), 0);
     if (il2cppBase == 0) {
         pthread_exit(0);
         return;
