@@ -155,19 +155,16 @@ fn_bool_self_damage old_ApplyDamage = nullptr;
 //  HOOK FUNCTIONS
 // ================================================================
 
-// --- God Mode ---
 void hk_set_undead(void* self, bool value) {
     if (bGodMode) value = true;
     if (old_set_undead) old_set_undead(self, value);
 }
 
-// --- Speed Hack ---
 void hk_SetMoveSpeedFactor(void* self, float factor) {
     if (bSpeedHack) factor *= speedFactor;
     if (old_SetMoveSpeedFactor) old_SetMoveSpeedFactor(self, factor);
 }
 
-// --- No Damage ---
 bool hk_ApplyDamage(void* self, int64_t damage, void* from, bool isCritical,
                     bool poisonAttack, int damageSource) {
     if (bNoDamage) return false;
@@ -175,7 +172,6 @@ bool hk_ApplyDamage(void* self, int64_t damage, void* from, bool isCritical,
                                              poisonAttack, damageSource) : false;
 }
 
-// --- Tiền Mềm Vô Hạn ---
 void hk_set_SoftMoney_New(void* self, int64_t value) {
     if (bInfiniteMoneySoft) value = 999999999;
     if (old_set_SoftMoney_New) old_set_SoftMoney_New(self, value);
@@ -185,7 +181,6 @@ void hk_set_SoftMoney_Old(void* self, int64_t value) {
     if (old_set_SoftMoney_Old) old_set_SoftMoney_Old(self, value);
 }
 
-// --- Tiền Cứng Vô Hạn ---
 void hk_set_HardMoney_New(void* self, int64_t value) {
     if (bInfiniteMoneyHard) value = 999999999;
     if (old_set_HardMoney_New) old_set_HardMoney_New(self, value);
@@ -195,7 +190,6 @@ void hk_set_HardMoney_Old(void* self, int64_t value) {
     if (old_set_HardMoney_Old) old_set_HardMoney_Old(self, value);
 }
 
-// --- Auto Max Level ---
 void hk_set_Level_New(void* self, int value) {
     if (bAutoMaxLevel) value = 99;
     if (old_set_Level_New) old_set_Level_New(self, value);
@@ -205,7 +199,6 @@ void hk_set_Level_Old(void* self, int value) {
     if (old_set_Level_Old) old_set_Level_Old(self, value);
 }
 
-// --- Năng Lượng Vô Hạn ---
 void hk_set_Energy_New(void* self, int64_t value) {
     if (bInfiniteEnergy) value = 9999;
     if (old_set_Energy_New) old_set_Energy_New(self, value);
@@ -215,7 +208,6 @@ void hk_set_Energy_Old(void* self, int64_t value) {
     if (old_set_Energy_Old) old_set_Energy_Old(self, value);
 }
 
-// --- No Ads ---
 void hk_set_NoAds_New(void* self, bool value) {
     if (bNoAds) value = true;
     if (old_set_NoAds_New) old_set_NoAds_New(self, value);
@@ -225,7 +217,6 @@ void hk_set_NoAds_Old(void* self, bool value) {
     if (old_set_NoAds_Old) old_set_NoAds_Old(self, value);
 }
 
-// --- VIP Active ---
 void hk_set_VipActive_New(void* self, bool value) {
     if (bVipActive) value = true;
     if (old_set_VipActive_New) old_set_VipActive_New(self, value);
@@ -302,6 +293,45 @@ void Changes(JNIEnv *env, jclass clazz, jobject obj,
 }
 
 // ================================================================
+//  JNI HELPER - Lấy JavaVM và Context
+// ================================================================
+static JavaVM* g_jvm = nullptr;
+
+extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    g_jvm = vm;
+    JNIEnv* env = nullptr;
+    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
+    return JNI_VERSION_1_6;
+}
+
+JNIEnv* GetJNIEnv() {
+    JNIEnv* env = nullptr;
+    if (g_jvm && g_jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) return env;
+    return nullptr;
+}
+
+jobject GetGlobalContext() {
+    JNIEnv* env = GetJNIEnv();
+    if (!env) return nullptr;
+    jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
+    if (!activityThreadClass) return nullptr;
+    jmethodID currentActivityThread = env->GetStaticMethodID(activityThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
+    jobject activityThread = env->CallStaticObjectMethod(activityThreadClass, currentActivityThread);
+    if (!activityThread) return nullptr;
+    jmethodID getApplication = env->GetMethodID(activityThreadClass, "getApplication", "()Landroid/app/Application;");
+    jobject app = env->CallObjectMethod(activityThread, getApplication);
+    if (!app) return nullptr;
+    jclass appClass = env->GetObjectClass(app);
+    jmethodID getApplicationContext = env->GetMethodID(appClass, "getApplicationContext", "()Landroid/content/Context;");
+    jobject context = env->CallObjectMethod(app, getApplicationContext);
+    env->DeleteLocalRef(activityThreadClass);
+    env->DeleteLocalRef(activityThread);
+    env->DeleteLocalRef(appClass);
+    env->DeleteLocalRef(app);
+    return context;
+}
+
+// ================================================================
 //  HACK THREAD - INSTALL HOOKS
 // ================================================================
 void hack_thread() {
@@ -313,6 +343,20 @@ void hack_thread() {
     }
 
     sleep(15); // chờ game load
+
+    // ========== GỌI MENU INIT ==========
+    JNIEnv* env = GetJNIEnv();
+    jobject context = GetGlobalContext();
+    if (env && context) {
+        jstring title = env->NewStringUTF("THROW.IO MOD");
+        jstring subtitle = env->NewStringUTF("by Axiom");
+        Init(env, nullptr, context, title, subtitle);
+        env->DeleteLocalRef(title);
+        env->DeleteLocalRef(subtitle);
+        LOGI("Menu Init OK");
+    } else {
+        LOGI("Menu Init FAIL - env=%p context=%p", env, context);
+    }
 
     uintptr_t il2cppBase = (uintptr_t)getAbsoluteAddress(
         OBFUSCATE("libil2cpp.so"), 0
