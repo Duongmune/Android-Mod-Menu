@@ -1,6 +1,5 @@
 name: ChanelTeam LGL Build
 
-# Cho phép pháp sư bấm nút "Run workflow" bằng tay
 on:
   workflow_dispatch: 
 
@@ -20,7 +19,7 @@ jobs:
           java-version: '17'
 
       - name: Tự động chế tạo Củi (Fix lỗi mất file Gradle Wrapper)
-        run: gradle wrapper
+        run: gradle wrapper --gradle-version 8.13
 
       - name: Cấp quyền thực thi cho Gradle
         run: chmod +x ./gradlew
