@@ -152,6 +152,12 @@ fn_void_float old_SetMoveSpeedFactor = nullptr;
 fn_bool_self_damage old_ApplyDamage = nullptr;
 
 // ================================================================
+//  EXTERN từ Setup.cpp
+// ================================================================
+extern JavaVM* jvm;
+extern JNIEnv* env;
+
+// ================================================================
 //  HOOK FUNCTIONS
 // ================================================================
 
@@ -293,20 +299,11 @@ void Changes(JNIEnv *env, jclass clazz, jobject obj,
 }
 
 // ================================================================
-//  JNI HELPER - Lấy JavaVM và Context
+//  JNI HELPER - Lấy Context
 // ================================================================
-static JavaVM* g_jvm = nullptr;
-
-extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    g_jvm = vm;
-    JNIEnv* env = nullptr;
-    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
-    return JNI_VERSION_1_6;
-}
-
 JNIEnv* GetJNIEnv() {
     JNIEnv* env = nullptr;
-    if (g_jvm && g_jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) return env;
+    if (jvm && jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) return env;
     return nullptr;
 }
 
