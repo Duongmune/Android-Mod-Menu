@@ -18,8 +18,13 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Cấp quyền thực thi cho Gradle
-        run: chmod +x ./gradlew
+      - name: Cài Gradle 8.13 thủ công
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.13-bin.zip -O gradle.zip
+          unzip -q gradle.zip
+          sudo mv gradle-8.13 /opt/gradle-8.13
+          /opt/gradle-8.13/bin/gradle wrapper --gradle-version 8.13
+          chmod +x ./gradlew
 
       - name: Nổi Lửa Lò Bát Quái (Đang Build...)
         run: ./gradlew assembleRelease --no-daemon
