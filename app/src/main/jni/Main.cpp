@@ -152,19 +152,13 @@ fn_void_float old_SetMoveSpeedFactor = nullptr;
 fn_bool_self_damage old_ApplyDamage = nullptr;
 
 // ================================================================
-//  JVM HELPER - Lấy JavaVM không cần JNI_OnLoad
+//  JVM HELPER - Dùng JavaVM từ Setup.cpp
 // ================================================================
-static JavaVM* jvm = nullptr;
+extern JavaVM* jvm;
 
 JNIEnv* GetJNIEnv() {
     JNIEnv* env = nullptr;
-    if (!jvm) {
-        jsize count = 0;
-        if (JNI_GetCreatedJavaVMs(&jvm, 1, &count) != JNI_OK || count == 0) {
-            return nullptr;
-        }
-    }
-    if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+    if (jvm && jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
         return env;
     }
     return nullptr;
