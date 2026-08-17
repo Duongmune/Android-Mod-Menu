@@ -2,20 +2,16 @@
 #include "Menu/Menu.hpp"
 #include "Utils.hpp"
 
+JavaVM* jvm = nullptr;
+
 int RegisterMenu(JNIEnv *env) {
     JNINativeMethod methods[] = {
-            {OBFUSCATE("Icon"),            OBFUSCATE(
-                                                   "()Ljava/lang/String;"),                                                           reinterpret_cast<void *>(Icon)},
-            {OBFUSCATE("IconWebViewData"), OBFUSCATE(
-                                                   "()Ljava/lang/String;"),                                                           reinterpret_cast<void *>(IconWebViewData)},
-            {OBFUSCATE("IsGameLibLoaded"), OBFUSCATE(
-                                                   "()Z"),                                                                            reinterpret_cast<void *>(isGameLibLoaded)},
-            {OBFUSCATE("Init"),            OBFUSCATE(
-                                                   "(Landroid/content/Context;Landroid/widget/TextView;Landroid/widget/TextView;)V"), reinterpret_cast<void *>(Init)},
-            {OBFUSCATE("SettingsList"),    OBFUSCATE(
-                                                   "()[Ljava/lang/String;"),                                                          reinterpret_cast<void *>(SettingsList)},
-            {OBFUSCATE("GetFeatureList"),  OBFUSCATE(
-                                                   "()[Ljava/lang/String;"),                                                          reinterpret_cast<void *>(GetFeatureList)},
+            {OBFUSCATE("Icon"),            OBFUSCATE("()Ljava/lang/String;"),                                                           reinterpret_cast<void *>(Icon)},
+            {OBFUSCATE("IconWebViewData"), OBFUSCATE("()Ljava/lang/String;"),                                                           reinterpret_cast<void *>(IconWebViewData)},
+            {OBFUSCATE("IsGameLibLoaded"), OBFUSCATE("()Z"),                                                                            reinterpret_cast<void *>(isGameLibLoaded)},
+            {OBFUSCATE("Init"),            OBFUSCATE("(Landroid/content/Context;Landroid/widget/TextView;Landroid/widget/TextView;)V"), reinterpret_cast<void *>(Init)},
+            {OBFUSCATE("SettingsList"),    OBFUSCATE("()[Ljava/lang/String;"),                                                          reinterpret_cast<void *>(SettingsList)},
+            {OBFUSCATE("GetFeatureList"),  OBFUSCATE("()[Ljava/lang/String;"),                                                          reinterpret_cast<void *>(GetFeatureList)},
     };
 
     jclass clazz = env->FindClass(OBFUSCATE("com/android/support/Menu"));
@@ -55,6 +51,7 @@ int RegisterMain(JNIEnv *env) {
 extern "C"
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void *reserved) {
+    jvm = vm;
     JNIEnv *env;
     vm->GetEnv((void **) &env, JNI_VERSION_1_6);
     if (RegisterMenu(env) != 0)
