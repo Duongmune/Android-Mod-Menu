@@ -164,25 +164,59 @@ JNIEnv* GetJNIEnv() {
     return nullptr;
 }
 
-jobject GetGlobalContext() {
+// Tạo TextView cho title/subtitle
+jobject CreateTextView(JNIEnv* env, jobject context, const char* text) {
+    jclass textViewClass = env->FindClass("android/widget/TextView");
+    jmethodID ctor = env->GetMethodID(textViewClass, "<init>", "(Landroid/content/Context;)V");
+    jobject textView = env->NewObject(textViewClass, ctor, context);
+    jmethodID setText = env->GetMethodID(textViewClass, "setText", "(Ljava/lang/CharSequence;)V");
+    jstring jtext = env->NewStringUTF(text);
+    env->CallVoidMethod(textView, setText, jtext);
+    env->DeleteLocalRef(jtext);
+    return textView;
+}
+
+// Lấy Activity hiện tại từ ActivityThread
+jobject GetCurrentActivity() {
     JNIEnv* env = GetJNIEnv();
     if (!env) return nullptr;
+
     jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
     if (!activityThreadClass) return nullptr;
+
     jmethodID currentActivityThread = env->GetStaticMethodID(activityThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
     jobject activityThread = env->CallStaticObjectMethod(activityThreadClass, currentActivityThread);
     if (!activityThread) return nullptr;
-    jmethodID getApplication = env->GetMethodID(activityThreadClass, "getApplication", "()Landroid/app/Application;");
-    jobject app = env->CallObjectMethod(activityThread, getApplication);
-    if (!app) return nullptr;
-    jclass appClass = env->GetObjectClass(app);
-    jmethodID getApplicationContext = env->GetMethodID(appClass, "getApplicationContext", "()Landroid/content/Context;");
-    jobject context = env->CallObjectMethod(app, getApplicationContext);
-    env->DeleteLocalRef(activityThreadClass);
-    env->DeleteLocalRef(activityThread);
-    env->DeleteLocalRef(appClass);
-    env->DeleteLocalRef(app);
-    return context;
+
+    jfieldID mActivities = env->GetFieldID(activityThreadClass, "mActivities", "Ljava/util/Map;");
+    jobject activities = env->GetObjectField(activityThread, mActivities);
+    if (!activities) return nullptr;
+
+    jclass mapClass = env->GetObjectClass(activities);
+    jmethodID values = env->GetMethodID(mapClass, "values", "()Ljava/util/Collection;");
+    jobject collection = env->CallObjectMethod(activities, values);
+
+    jclass collectionClass = env->GetObjectClass(collection);
+    jmethodID iterator = env->GetMethodID(collectionClass, "iterator", "()Ljava/util/Iterator;");
+    jobject iter = env->CallObjectMethod(collection, iterator);
+
+    jclass iteratorClass = env->GetObjectClass(iter);
+    jmethodID hasNext = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID next = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    while (env->CallBooleanMethod(iter, hasNext)) {
+        jobject activityRecord = env->CallObjectMethod(iter, next);
+        jclass recordClass = env->GetObjectClass(activityRecord);
+        jfieldID activityField = env->GetFieldID(recordClass, "activity", "Landroid/app/Activity;");
+        jobject activity = env->GetObjectField(activityRecord, activityField);
+        if (activity != nullptr) {
+            env->DeleteLocalRef(activityRecord);
+            return activity;
+        }
+        env->DeleteLocalRef(activityRecord);
+    }
+
+    return nullptr;
 }
 
 // ================================================================
@@ -341,16 +375,16 @@ void hack_thread() {
 
     // ========== GỌI MENU INIT ==========
     JNIEnv* env = GetJNIEnv();
-    jobject context = GetGlobalContext();
-    if (env && context) {
-        jstring title = env->NewStringUTF("THROW.IO MOD");
-        jstring subtitle = env->NewStringUTF("by Axiom");
-        Init(env, nullptr, context, title, subtitle);
+    jobject activity = GetCurrentActivity();
+    if (env && activity) {
+        jobject title = CreateTextView(env, activity, "THROW.IO MOD");
+        jobject subtitle = CreateTextView(env, activity, "by Axiom");
+        Init(env, activity, activity, title, subtitle);
         env->DeleteLocalRef(title);
         env->DeleteLocalRef(subtitle);
         LOGI("Menu Init OK");
     } else {
-        LOGI("Menu Init FAIL - env=%p context=%p", env, context);
+        LOGI("Menu Init FAIL - env=%p activity=%p", env, activity);
     }
 
     uintptr_t il2cppBase = (uintptr_t)getAbsoluteAddress(
