@@ -152,10 +152,44 @@ fn_void_float old_SetMoveSpeedFactor = nullptr;
 fn_bool_self_damage old_ApplyDamage = nullptr;
 
 // ================================================================
-//  EXTERN từ Setup.cpp
+//  JVM HELPER - Lấy JavaVM không cần JNI_OnLoad
 // ================================================================
-extern JavaVM* jvm;
-extern JNIEnv* env;
+static JavaVM* jvm = nullptr;
+
+JNIEnv* GetJNIEnv() {
+    JNIEnv* env = nullptr;
+    if (!jvm) {
+        jsize count = 0;
+        if (JNI_GetCreatedJavaVMs(&jvm, 1, &count) != JNI_OK || count == 0) {
+            return nullptr;
+        }
+    }
+    if (jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) {
+        return env;
+    }
+    return nullptr;
+}
+
+jobject GetGlobalContext() {
+    JNIEnv* env = GetJNIEnv();
+    if (!env) return nullptr;
+    jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
+    if (!activityThreadClass) return nullptr;
+    jmethodID currentActivityThread = env->GetStaticMethodID(activityThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
+    jobject activityThread = env->CallStaticObjectMethod(activityThreadClass, currentActivityThread);
+    if (!activityThread) return nullptr;
+    jmethodID getApplication = env->GetMethodID(activityThreadClass, "getApplication", "()Landroid/app/Application;");
+    jobject app = env->CallObjectMethod(activityThread, getApplication);
+    if (!app) return nullptr;
+    jclass appClass = env->GetObjectClass(app);
+    jmethodID getApplicationContext = env->GetMethodID(appClass, "getApplicationContext", "()Landroid/content/Context;");
+    jobject context = env->CallObjectMethod(app, getApplicationContext);
+    env->DeleteLocalRef(activityThreadClass);
+    env->DeleteLocalRef(activityThread);
+    env->DeleteLocalRef(appClass);
+    env->DeleteLocalRef(app);
+    return context;
+}
 
 // ================================================================
 //  HOOK FUNCTIONS
@@ -296,36 +330,6 @@ void Changes(JNIEnv *env, jclass clazz, jobject obj,
             break;
         case 8: bBypassAntiCheat   = boolean; break;
     }
-}
-
-// ================================================================
-//  JNI HELPER - Lấy Context
-// ================================================================
-JNIEnv* GetJNIEnv() {
-    JNIEnv* env = nullptr;
-    if (jvm && jvm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_OK) return env;
-    return nullptr;
-}
-
-jobject GetGlobalContext() {
-    JNIEnv* env = GetJNIEnv();
-    if (!env) return nullptr;
-    jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
-    if (!activityThreadClass) return nullptr;
-    jmethodID currentActivityThread = env->GetStaticMethodID(activityThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
-    jobject activityThread = env->CallStaticObjectMethod(activityThreadClass, currentActivityThread);
-    if (!activityThread) return nullptr;
-    jmethodID getApplication = env->GetMethodID(activityThreadClass, "getApplication", "()Landroid/app/Application;");
-    jobject app = env->CallObjectMethod(activityThread, getApplication);
-    if (!app) return nullptr;
-    jclass appClass = env->GetObjectClass(app);
-    jmethodID getApplicationContext = env->GetMethodID(appClass, "getApplicationContext", "()Landroid/content/Context;");
-    jobject context = env->CallObjectMethod(app, getApplicationContext);
-    env->DeleteLocalRef(activityThreadClass);
-    env->DeleteLocalRef(activityThread);
-    env->DeleteLocalRef(appClass);
-    env->DeleteLocalRef(app);
-    return context;
 }
 
 // ================================================================
